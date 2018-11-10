@@ -4,24 +4,6 @@
 public class WildcardMatching {
     public boolean isMatch(String s, String p) {
         //优化p，多个连续的*合并成一个
-        char[] pp = p.toCharArray();
-        int index = 0;
-        int length = -1;
-        boolean pre = false;
-        while (index < pp.length) {
-           char c = pp[index];
-           if (c != '*') {
-                length++;
-                pp[length] = c;
-                pre = false;
-           } else {
-                if (!pre) {
-                    length++;
-                }
-                pre = true;
-           }
-           index++;
-        }
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < p.length(); i++) {
             char c = p.charAt(i);
