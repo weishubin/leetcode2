@@ -4,7 +4,7 @@ import java.util.*;
  * 可以剪枝：后边的应该大于前边的最小值；前边的应该小于后边的最大值
  * Created by weishubin on 2018/11/9.
  */
-public class WildcardMatchingV2 {
+public class WildcardMatchingV3 {
     public boolean isMatch(String s, String p) {
         p = mergeStar(p);
 //        System.out.println(p);
@@ -20,12 +20,49 @@ public class WildcardMatchingV2 {
         if(!cut(groupMap)) {
             return false;
         }
-        return isMatch(s, 0, s.length(), p, 0, p.length(), groupMap);
+
+        int firstWildIndex = p.indexOf('*');
+        int lastWildIndex = p.lastIndexOf('*');
+
+        if (firstWildIndex >= 0) {
+            if (firstWildIndex > 0) {
+                if (firstWildIndex > s.length()) {
+                    return false;
+                }
+                boolean leftM = isMatch(s, 0, firstWildIndex, p, 0, firstWildIndex, groupMap);
+                if (!leftM) {
+                    return false;
+                }
+            }
+
+            int sEnd = s.length();
+            if (lastWildIndex != p.length() - 1) {
+                sEnd = s.length() - p.length() + lastWildIndex + 1;
+                if (sEnd >= s.length() || sEnd < 0) {
+                    return false;
+                }
+                if (sEnd < firstWildIndex) {
+                    return false;
+                }
+                boolean rightM = isMatch(s, sEnd, s.length(), p, lastWildIndex + 1, p.length(), groupMap);
+                if (!rightM) {
+                    return false;
+                }
+            }
+
+            if (firstWildIndex != lastWildIndex) {
+                boolean midM = isMatch(s, firstWildIndex, sEnd, p, firstWildIndex, lastWildIndex + 1, groupMap);
+                return midM;
+            }
+            return true;
+        } else {
+            return isMatch(s, 0, s.length(), p, 0, p.length(), groupMap) ;
+        }
+
     }
 
 
     private boolean isMatch(String s, int sStart, int sEnd, String p, int pStart, int pEnd, Map<Integer, Pos>  groupMap) {
-        //System.out.println(s.substring(sStart, sEnd) + "\n" + p.substring(pStart, pEnd) + "\n");
         if (sStart == sEnd && pStart == pEnd) {
             return true;
         } else if (sStart == sEnd) {
@@ -38,33 +75,37 @@ public class WildcardMatchingV2 {
         } else if (pStart == pEnd) {
             return false;
         }
+//        System.out.println(s.substring(sStart, sEnd) + "\n" + p.substring(pStart, pEnd) + "\n");
         Pos pos = groupMap.get(pStart);
         if (pos == null) {
             throw new RuntimeException("pos error");
         }
 
         if (pos.type == CharType.Wild) {
-            if (pos.start + pos.len == p.length()) { //*是最后一个字符
+            if (pos.start + pos.len == pEnd) { //*是最后一个字符
                 return true;
             } else {
                 Pos nextPos = groupMap.get(pos.start + pos.len);
                 if (nextPos.type == CharType.Normal) { //字符
+
                     for (int i : nextPos.matchIndex) {
-                        if (i >= sStart) {
-                            boolean b = isMatch(s, i + nextPos.len, sEnd, p, nextPos.start + nextPos.len, pEnd, groupMap);
-                            if (b) {
-                                return true;
-                            }
+                        if (i >= sStart && i + nextPos.len <= sEnd) {
+                            return isMatch(s, i + nextPos.len, sEnd, p, nextPos.start + nextPos.len, pEnd, groupMap);
                         }
                     }
                     return false;
                 } else if (nextPos.type == CharType.Single) { //?
-                    for (int i = sStart; i < sEnd; i++) {
-                        if (isMatch(s, i, sEnd, p, pos.start + pos.len, pEnd, groupMap)) {
-                            return true;
+                    if (nextPos.matchIndex.size() > 0) {
+                        for (int m : nextPos.matchIndex) {
+                            if (m >= sStart && m + nextPos.len <= sEnd) {
+                                return isMatch(s, m + nextPos.len, sEnd, p, nextPos.start + nextPos.len, pEnd, groupMap);
+                            }
                         }
+                        return false;
+                    } else {
+                       //直接匹配头几个字符
+                        return isMatch(s, sStart + nextPos.len, sEnd, p, nextPos.start + nextPos.len, pEnd, groupMap);
                     }
-                    return false;
                 } else {
                     System.err.println("error1");
                     return false;
@@ -81,7 +122,7 @@ public class WildcardMatchingV2 {
             } else {
                 return isMatch(s, sStart + pos.len, sEnd, p, pStart + pos.len, pEnd, groupMap);
             }
-        } else {
+        } else { //字符
             for (int index : pos.matchIndex) {
                 if (index == sStart) {
                     return isMatch(s, sStart + pos.len, sEnd, p, pStart + pos.len, pEnd, groupMap);
@@ -315,11 +356,11 @@ public class WildcardMatchingV2 {
                     return false;
                 }
                 min = matchIndex.get(0);
-                System.out.println(matchIndex.size());
+//                System.out.println(matchIndex.size());
             }
         }
 
-        System.out.println("------");
+//        System.out.println("------");
 
         int preMax = Integer.MAX_VALUE;
         for (int i = groupStartList.size() - 1; i >= 0; i--) {
@@ -338,7 +379,7 @@ public class WildcardMatchingV2 {
                     return false;
                 }
                 preMax = matchIndex.get(matchIndex.size() - 1);
-                System.out.println(matchIndex.size());
+//                System.out.println(matchIndex.size());
             }
         }
 
@@ -348,26 +389,38 @@ public class WildcardMatchingV2 {
 
 
     public static void main(String[] args) {
-        WildcardMatchingV2 s = new WildcardMatchingV2();
-//        assert s.isMatch("adceb", "*a*b") == true;
+        WildcardMatchingV3 s = new WildcardMatchingV3();
         long t = System.currentTimeMillis();
+        assert s.isMatch("babaaababaabababbbbbbaabaabbabababbaababbaaabbbaaab", "***bba**a*bbba**aab**b") == false;
+        assert s.isMatch("babaaababaabababbbbbbaabaabbabababbaababbaaabbbaaab", "***bba**a*bbba**aab**") == true;
+        assert s.isMatch("abbbba", "a**a*?") == false;
+        assert s.isMatch("abc", "abc?*") == false;
+        assert s.isMatch("abcd", "ab*cd") == true;
+        assert s.isMatch("ab", "*ab") == true;
+        assert s.isMatch("abce", "abc*??") == false;
+        assert s.isMatch("adceb", "*a*b") == true;
+        assert s.isMatch("bbbbb", "*b") == true;
+        assert s.isMatch("a", "a*") == true;
+        assert s.isMatch("a", "a") == true;
+        assert s.isMatch("a", "a") == true;
+        assert s.isMatch("", "*") == true;
 //        s.isMatch("abbabaaabbabbaababbabbbbbabbbabbbabaaaaababababbbabababaabbababaabbbbbbaaaabababbbaabbbbaabbbbababababbaabbaababaabbbababababbbbaaabbbbbabaaaabbababbbbaababaabbababbbbbababbbabaaaaaaaabbbbbaabaaababaaaabb",
 //                "**aa*****ba*a*bb**aa*ab****a*aaaaaa***a*aaaa**bbabb*b*b**aaaaaaaaa*a********ba*bbb***a*ba*bb*bb**a*b*bb");
-//        assert s.isMatch("acdcb", "a*c?b") == false;
-//        assert s.isMatch("abbabaaabbabbaababbabbbbbabbbabbbabaaaaababababbbabababaabbababaabbbbbbaaaabababbbaabbbbaabbbbababababbaabbaababaabbbababababbbbaaabbbbbabaaaabbababbbbaababaabbababbbbbababbbabaaaaaaaabbbbbaabaaababaaaabb",
-//                "**aa*****ba*a*bb**aa*ab****a*aaaaaa***a*aaaa**bbabb*b*b**aaaaaaaaa*a********ba*bbb***a*ba*bb*bb**a*b*bb") == false;
-//                assert s.isMatch("", "a") == false;
-//        assert s.isMatch("cb", "*a") == false;
-//        assert s.isMatch("aa", "*") == true;
-//        assert s.isMatch("b", "?b") == false;
-//        assert s.isMatch("aa", "a") == false;
-//        assert s.isMatch("adceb", "*a*b") == true;
-//        s.isMatch("", "???");
+        assert s.isMatch("acdcb", "a*c?b") == false;
+        assert s.isMatch("abbabaaabbabbaababbabbbbbabbbabbbabaaaaababababbbabababaabbababaabbbbbbaaaabababbbaabbbbaabbbbababababbaabbaababaabbbababababbbbaaabbbbbabaaaabbababbbbaababaabbababbbbbababbbabaaaaaaaabbbbbaabaaababaaaabb",
+                "**aa*****ba*a*bb**aa*ab****a*aaaaaa***a*aaaa**bbabb*b*b**aaaaaaaaa*a********ba*bbb***a*ba*bb*bb**a*b*bb") == false;
+                assert s.isMatch("", "a") == false;
+        assert s.isMatch("cb", "*a") == false;
+        assert s.isMatch("aa", "*") == true;
+        assert s.isMatch("b", "?b") == false;
+        assert s.isMatch("aa", "a") == false;
+        assert s.isMatch("adceb", "*a*b") == true;
+        s.isMatch("", "???");
 
 
-//        s.isMatch("aaaaaabbaabaaaaabababbabbaababbaabaababaaaaabaaaabaaaabababbbabbbbaabbababbbbababbaaababbbabbbaaaaaaabbaabbbbababbabbaaabababaaaabaaabaaabbbbbabaaabbbaabbbbbbbaabaaababaaaababbbbbaabaaabbabaabbaabbaaaaba",
-//                "*bbb**a*******abb*b**a**bbbbaab*b*aaba*a*b**a*abb*aa****b*bb**abbbb*b**bbbabaa*b**ba**a**ba**b*a*a**aaa");
-        System.out.println(System.currentTimeMillis() - t);
+        boolean b = s.isMatch("aaaaaabbaabaaaaabababbabbaababbaabaababaaaaabaaaabaaaabababbbabbbbaabbababbbbababbaaababbbabbbaaaaaaabbaabbbbababbabbaaabababaaaabaaabaaabbbbbabaaabbbaabbbbbbbaabaaababaaaababbbbbaabaaabbabaabbaabbaaaaba",
+                "*bbb**a*******abb*b**a**bbbbaab*b*aaba*a*b**a*abb*aa****b*bb**abbbb*b**bbbabaa*b**ba**a**ba**b*a*a**aaa");
+        System.out.println(b);
 
 
         //"aaaaaabbaabaaaaabababbabbaababbaabaababaaaaabaaaabaaaabababbbabbbbaabbababbbbababbaaababbbabbbaaaaaaabbaabbbbababbabbaaabababaaaabaaabaaabbbbbabaaabbbaabbbbbbbaabaaababaaaababbbbbaabaaabbabaabbaabbaaaaba"
@@ -376,8 +429,14 @@ public class WildcardMatchingV2 {
 
 //        "baaabbabbbaabbbbbbabbbaaabbaabbbbbaaaabbbbbabaaaaabbabbaabaaababaabaaabaaaabbabbbaabbbbbaababbbabaaabaabaaabbbaababaaabaaabaaaabbabaabbbabababbbbabbaaababbabbaabbaabbbbabaaabbababbabababbaabaabbaaabbba"
 //        "*b*ab*bb***abba*a**ab***b*aaa*a*b****a*b*bb**b**ab*ba**bb*bb*baab****bab*bbb**a*a*aab*b****b**ba**abba"
-        s.isMatch("baaabbabbbaabbbbbbabbbaaabbaabbbbbaaaabbbbbabaaaaabbabbaabaaababaabaaabaaaabbabbbaabbbbbaababbbabaaabaabaaabbbaababaaabaaabaaaabbabaabbbabababbbbabbaaababbabbaabbaabbbbabaaabbababbabababbaabaabbaaabbba",
+        b = s.isMatch("baaabbabbbaabbbbbbabbbaaabbaabbbbbaaaabbbbbabaaaaabbabbaabaaababaabaaabaaaabbabbbaabbbbbaababbbabaaabaabaaabbbaababaaabaaabaaaabbabaabbbabababbbbabbaaababbabbaabbaabbbbabaaabbababbabababbaabaabbaaabbba",
                 "*b*ab*bb***abba*a**ab***b*aaa*a*b****a*b*bb**b**ab*ba**bb*bb*baab****bab*bbb**a*a*aab*b****b**ba**abba");
+        System.out.println(b);
+
+        assert s.isMatch("abcdd", "abc*d") == true;
+        assert s.isMatch("aa", "aa") == true;
+
+        System.out.println(System.currentTimeMillis() - t);
     }
 
 }
