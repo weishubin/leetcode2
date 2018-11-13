@@ -1,12 +1,11 @@
 import java.util.*;
 
 /**
- * 可以剪枝：后边的应该大于前边的最小值；前边的应该小于后边的最大值
  * Created by weishubin on 2018/11/9.
  */
 public class WildcardMatchingV3 {
     public boolean isMatch(String s, String p) {
-        p = mergeStar(p);
+//        p = mergeStar(p);
 //        System.out.println(p);
         Map<Integer, Pos>  groupMap = group(p);
 //        System.out.println(groupMap);
@@ -259,25 +258,6 @@ public class WildcardMatchingV3 {
         return false;
     }
 
-    private int typeConvert(char c) {
-        if (c == '*') {
-            return 0;
-        }
-        if (c == '?') {
-            return 1;
-        }
-        return 2;
-    }
-
-    private static char typeConvert(int t) {
-        if (t == 0) {
-            return '*';
-        }
-        if (t == 1) {
-            return '?';
-        }
-        return 'c';
-    }
     static class Pos {
         Pos(CharType t, int s, int len) {
             this.type = t;
@@ -303,7 +283,6 @@ public class WildcardMatchingV3 {
     }
 
     enum CharType {
-        LineStart(-1),
         Wild(0),
         Single(1),
         Normal(2),
