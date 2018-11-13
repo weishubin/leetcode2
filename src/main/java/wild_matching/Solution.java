@@ -1,11 +1,13 @@
+package wild_matching;
+
 import java.util.*;
 
 /**
  * Created by weishubin on 2018/11/9.
  */
-public class WildcardMatchingV3 {
+public class Solution {
     public boolean isMatch(String s, String p) {
-//        p = mergeStar(p);
+        p = mergeStar(p);
 //        System.out.println(p);
         Map<Integer, Pos>  groupMap = group(p);
 //        System.out.println(groupMap);
@@ -13,50 +15,17 @@ public class WildcardMatchingV3 {
             return false;
         }
 //        System.out.println(groupMap);
-        mergeQuesionMark(s, p, groupMap);
-//        System.out.println(groupMap);
-
-        if(!cut(groupMap)) {
+        if (!mergeQuesionMark(s, p, groupMap)) {
             return false;
         }
 
-        int firstWildIndex = p.indexOf('*');
-        int lastWildIndex = p.lastIndexOf('*');
-
-        if (firstWildIndex >= 0) {
-            if (firstWildIndex > 0) {
-                if (firstWildIndex > s.length()) {
-                    return false;
-                }
-                boolean leftM = isMatch(s, 0, firstWildIndex, p, 0, firstWildIndex, groupMap);
-                if (!leftM) {
-                    return false;
-                }
-            }
-
-            int sEnd = s.length();
-            if (lastWildIndex != p.length() - 1) {
-                sEnd = s.length() - p.length() + lastWildIndex + 1;
-                if (sEnd >= s.length() || sEnd < 0) {
-                    return false;
-                }
-                if (sEnd < firstWildIndex) {
-                    return false;
-                }
-                boolean rightM = isMatch(s, sEnd, s.length(), p, lastWildIndex + 1, p.length(), groupMap);
-                if (!rightM) {
-                    return false;
-                }
-            }
-
-            if (firstWildIndex != lastWildIndex) {
-                boolean midM = isMatch(s, firstWildIndex, sEnd, p, firstWildIndex, lastWildIndex + 1, groupMap);
-                return midM;
-            }
-            return true;
-        } else {
-            return isMatch(s, 0, s.length(), p, 0, p.length(), groupMap) ;
+//        System.out.println(groupMap);
+        if(!cut(groupMap)) {
+            return false;
         }
+//        System.out.println(groupMap);
+
+        return isMatch(s, 0, s.length(), p, 0, p.length(), groupMap) ;
 
     }
 
@@ -85,29 +54,38 @@ public class WildcardMatchingV3 {
                 return true;
             } else {
                 Pos nextPos = groupMap.get(pos.start + pos.len);
-                if (nextPos.type == CharType.Normal) { //字符
-
-                    for (int i : nextPos.matchIndex) {
-                        if (i >= sStart && i + nextPos.len <= sEnd) {
-                            return isMatch(s, i + nextPos.len, sEnd, p, nextPos.start + nextPos.len, pEnd, groupMap);
-                        }
+                int lastIndex = p.lastIndexOf('*');
+                if (lastIndex == pStart) { //最后一组需要匹配
+                    int sS = s.length() - p.length() + lastIndex + 1;
+                    if (sS < sStart) {
+                        return false;
                     }
-                    return false;
-                } else if (nextPos.type == CharType.Single) { //?
-                    if (nextPos.matchIndex.size() > 0) {
-                        for (int m : nextPos.matchIndex) {
-                            if (m >= sStart && m + nextPos.len <= sEnd) {
-                                return isMatch(s, m + nextPos.len, sEnd, p, nextPos.start + nextPos.len, pEnd, groupMap);
+                    return isMatch(s, sS, s.length(), p, lastIndex + 1, p.length(), groupMap);
+                } else {
+                    if (nextPos.type == CharType.Normal) { //字符
+
+                        for (int i : nextPos.matchIndex) {
+                            if (i >= sStart && i + nextPos.len <= sEnd) {
+                                return isMatch(s, i + nextPos.len, sEnd, p, nextPos.start + nextPos.len, pEnd, groupMap);
                             }
                         }
                         return false;
+                    } else if (nextPos.type == CharType.Single) { //?
+                        if (nextPos.matchIndex.size() > 0) {
+                            for (int m : nextPos.matchIndex) {
+                                if (m >= sStart && m + nextPos.len <= sEnd) {
+                                    return isMatch(s, m + nextPos.len, sEnd, p, nextPos.start + nextPos.len, pEnd, groupMap);
+                                }
+                            }
+                            return false;
+                        } else {
+                            //直接匹配头几个字符
+                            return isMatch(s, sStart + nextPos.len, sEnd, p, nextPos.start + nextPos.len, pEnd, groupMap);
+                        }
                     } else {
-                       //直接匹配头几个字符
-                        return isMatch(s, sStart + nextPos.len, sEnd, p, nextPos.start + nextPos.len, pEnd, groupMap);
+                        System.err.println("error1");
+                        return false;
                     }
-                } else {
-                    System.err.println("error1");
-                    return false;
                 }
             }
         } else if(pos.type == CharType.Single) {
@@ -240,14 +218,15 @@ public class WildcardMatchingV3 {
                 boolean find = false;
                 for (int rightM : rightPos.matchIndex) {
                     if (rightM - pos.len >= 0) {
+                        find = true;
                         pos.matchIndex.add(rightM - pos.len);
                     }
                 }
                 if (!find) {
                     return false;
                 }
-            }
-            if (rightType == CharType.LineEnd) {
+                pos.len = pos.len + rightPos.len;
+            } else if (rightType == CharType.LineEnd) {
                 if (s.length() - pos.len >= 0) {
                     pos.matchIndex.add(s.length() - pos.len);
                 } else {
@@ -255,7 +234,7 @@ public class WildcardMatchingV3 {
                 }
             }
         }
-        return false;
+        return true;
     }
 
     static class Pos {
@@ -368,15 +347,18 @@ public class WildcardMatchingV3 {
 
 
     public static void main(String[] args) {
-        WildcardMatchingV3 s = new WildcardMatchingV3();
+        Solution s = new Solution();
         long t = System.currentTimeMillis();
+        assert s.isMatch("aaaa", "***a") == true;
+        assert s.isMatch("abaab", "*?a?") == true;
+        assert s.isMatch("aaaba", "*?*?a") == true;
+        assert s.isMatch("abce", "abc*??") == false;
         assert s.isMatch("babaaababaabababbbbbbaabaabbabababbaababbaaabbbaaab", "***bba**a*bbba**aab**b") == false;
         assert s.isMatch("babaaababaabababbbbbbaabaabbabababbaababbaaabbbaaab", "***bba**a*bbba**aab**") == true;
         assert s.isMatch("abbbba", "a**a*?") == false;
         assert s.isMatch("abc", "abc?*") == false;
         assert s.isMatch("abcd", "ab*cd") == true;
         assert s.isMatch("ab", "*ab") == true;
-        assert s.isMatch("abce", "abc*??") == false;
         assert s.isMatch("adceb", "*a*b") == true;
         assert s.isMatch("bbbbb", "*b") == true;
         assert s.isMatch("a", "a*") == true;
